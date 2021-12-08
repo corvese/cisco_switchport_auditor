@@ -22,9 +22,9 @@ class ParserRunningConfigInterface:
 
         if switch_name:
             self._interface.switch_name = switch_name
-        if switch_vlans:
-            self._switch_vlans = switch_vlans
-            self._interface.switch_vlans = switch_vlans
+
+        self._switch_vlans = switch_vlans
+        self._interface.switch_vlans = switch_vlans
 
         self._parser = self._add_interface_running_config_to_parser()
         self._interface_config_lines = self._obtain_interface_specific_line_config_objects()

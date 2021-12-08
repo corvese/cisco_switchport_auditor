@@ -20,27 +20,26 @@ def parse_from_config_file(config_files_directory, save_to_excel=False):
     Args:
         config_files_directory (str): Path of location where running config files are
 
-        save_to_excel (bool, optional): Set to True to export interface object 
+        save_to_excel (bool, optional): Set to True to export interface object
                                         data to excel. Defaults to False.
 
     Returns:
         list: list of Switch objects
-    """    
+    """
 
     switches = []
 
     for file in os.listdir(config_files_directory):
-        switch = Switch()
-        
+        switch = Switch(config_filename=file)
+
         with open(f'{config_files_directory}/{file}', 'r') as text_file:
             config = text_file.read()
-            
             ParserRunningConfigSwitch(switch, config)
             switches.append(switch)
 
-    if save_to_excel == True:
+    if save_to_excel is True:
         output_switchport_info_to_excel(switches)
-    
+
     print_total_switches_and_switchports_searched(switches)
 
     return switches
@@ -65,7 +64,7 @@ def parse_from_SSH_output(list_of_hosts, save_to_excel=False):
 
     Returns:
         list: list of Switch objects
-    """    
+    """ 
 
     username = input('Username: ')
     password = getpass()
@@ -77,7 +76,7 @@ def parse_from_SSH_output(list_of_hosts, save_to_excel=False):
         
         with ssh_handler(host=host, username=username, password=password) as ssh_session:
             running_config = ssh_session.send_command_timing('show running-config')
-            
+
         ParserRunningConfigSwitch(switch, running_config)
         switches.append(switch)
 

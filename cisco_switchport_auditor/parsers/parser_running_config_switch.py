@@ -65,9 +65,14 @@ class ParserRunningConfigSwitch:
 
         Returns:
             str: Hostname of the switch (i.e. MY_SWITCH)
-        """        
-        global_obj = self._parser.find_objects(r'^hostname')[0]
-        hostname = global_obj.re_match_typed(r'^hostname\s+(\S+)', default='')
+        """
+        try:
+            global_obj = self._parser.find_objects(r'^hostname')[0]
+            hostname = global_obj.re_match_typed(r'^hostname\s+(\S+)', default='')
+        except IndexError:
+            if self._switch.config_filename is not None:
+                print(f'Could not find the hostname in file: {self._switch.config_filename}')
+            hostname = None
 
         return hostname
     
