@@ -53,7 +53,8 @@ def write_dfs_to_excel_sheets(list_of_switch_specific_interface_dfs):
     now = datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
     writer = pd.ExcelWriter(f'{now}__switchport_audit.xlsx', engine='xlsxwriter')
     for df in list_of_switch_specific_interface_dfs:
-        #df.to_excel(writer, sheet_name=df['hostname'][0][0:31], index=False)
+        if df.df_name is None:
+            continue
         df.to_excel(writer, sheet_name=df.df_name, index=False)
     writer.save()
     print(f'An excel file ({now}__switchport_audit.xlsx) has been saved')
