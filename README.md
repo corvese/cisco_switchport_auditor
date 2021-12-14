@@ -1,13 +1,20 @@
+# Cisco Switchport Auditor
 
-
+## Table of Contents
+- [Cisco Switchport Auditor](#cisco-switchport-auditor)
+  - [Table of Contents](#table-of-contents)
 - [Project Summary](#project-summary)
 - [Motivation for this tool](#motivation-for-this-tool)
 - [How it works](#how-it-works)
+  - [Obtaining the data](#obtaining-the-data)
+  - [Parsing the data](#parsing-the-data)
+  - [Structuring/Managing Parsed Data](#structuringmanaging-parsed-data)
 - [Installation](#installation)
 - [Usage](#usage)
   - [Generating switch objects from running-configs:](#generating-switch-objects-from-running-configs)
     - [1. SSH into a switch to obtain its running-config](#1-ssh-into-a-switch-to-obtain-its-running-config)
     - [2. Importing a directory of configuration files](#2-importing-a-directory-of-configuration-files)
+    - [3. Using RESTCONF to obtain data](#3-using-restconf-to-obtain-data)
   - [Using Switch & Interface Objects](#using-switch--interface-objects)
     - [Switch Objects Attributes](#switch-objects-attributes)
     - [Interface Object Attributes:](#interface-object-attributes)
@@ -16,17 +23,18 @@
     - [Find which switches have VLAN 948 configured](#find-which-switches-have-vlan-948-configured)
   - [Exporting to Excel](#exporting-to-excel)
 - [Modifying the project for your specific usage](#modifying-the-project-for-your-specific-usage)
-  - [Modifying to obtain new interface configuration details](#modifying-to-obtain-new-interface-configuration-details)
+  - [Modifying to obtain new interface configuration details - regex/text based output](#modifying-to-obtain-new-interface-configuration-details---regextext-based-output)
     - [Interface configuration value check](#interface-configuration-value-check)
     - [Check if configuration line/command is present in interface config](#check-if-configuration-linecommand-is-present-in-interface-config)
     - [Check if a subset of configuration lines/commands are present in the interface config](#check-if-a-subset-of-configuration-linescommands-are-present-in-the-interface-config)
+  - [Modifying to obtain new interface configuration details - RESTCONF](#modifying-to-obtain-new-interface-configuration-details---restconf)
 - [SSH considerations](#ssh-considerations)
 - [Potential Improvements](#potential-improvements)
 - [Credits](#credits)
 
 
 # Project Summary
-Parses Cisco switch running configuration into Switch & Interface objects to access configuration details of the aforementioned in a programatic manner. Works with SSH or with running/start-up config files.
+Parses Cisco switch configuration into Switch & Interface objects to access configuration details of the aforementioned in a programatic manner. Works with SSH, RESTCONF, or with running/start-up config files.
 
 # Motivation for this tool
 I wanted to develop a tool to review Cisco switchport/interface configurations in a programable way. I found I was making a lot of custom scripts and wanted something that made the data obtained easy to work with and was scalable. Network programability is also a strong interest of mine. I hope someone else will be able to find use out of it as I have.
@@ -34,16 +42,27 @@ I wanted to develop a tool to review Cisco switchport/interface configurations i
 <br />
 
 # How it works
-Running-configs are obtained either by using SSH to log into a device and using the output of the command `show running-config` or you can provide a directory that contains text files of the running-configs/startup-configs you want parsed. 
 
-[CiscoConfParse](https://github.com/mpenning/ciscoconfparse) is utilized to obtain switch and interface configuration details. For my purposes, only the following interfaces' configurations are parsed:
+## Obtaining the data
 
-* FastEthernet
-* GigabitEthernet
-* TwoGigabitEthernet
-* TenGigabitEthernet
+* By using SSH to log into a device and using the output of the command `show running-config` 
+* By providing a directory that contains text files of the running-configs/startup-configs 
+* By using RESTCONF to obtain YANG model data
 
-I then utilize two classes (`Switch` & `Interface`) in the `/models` directory. All configuration details (e.g. interface names, VLAN ids, hostnames, etc) that are parsed are added to these objects as attributes so they can be iterated through and reviewed/audited. `Interface` objects are found within each `Switch` object inside a list attribute.
+## Parsing the data
+
+Once the data has been obtained, it must be parsed to be stored and used programmatically. 
+
+For textual outputs of the configuraiton that have been obtained over SSH or via a configuration file, I utilitized a project called [CiscoConfParse](https://github.com/mpenning/ciscoconfparse). Essentially, what this does is use regex logic to find relevant configuration information.
+
+For output returned via RESTCONF -- JSON is returned so that can be iterated and parsed by using python dictionaries. 
+
+The parsers can be found in the `/parsers` directory. The parsers are responsibile for obtaining and then assigning the parsed data to models which will be explained in the following section.
+
+## Structuring/Managing Parsed Data
+
+There are two classes (`Switch` & `Interface`) in the `/models` directory. All configuration details (e.g. interface names, VLAN ids, hostnames, etc) that are parsed are added to these objects as attributes so they can be iterated through and reviewed/audited. `Interface` objects are found within each `Switch` object inside a list attribute. Greater explanation (with examples) is shown in the [Using Switch & Interface Objects section](#using-switch--interface-objects).
+
 
 
 # Installation
@@ -51,6 +70,8 @@ I then utilize two classes (`Switch` & `Interface`) in the `/models` directory. 
 2. Execute in terminal `pip install -r requirements.txt`
 
 # Usage
+
+Navidate to the `cisco_switchport_auditor/cisco_switchport_auditor` directory
 
 ## Generating switch objects from running-configs:
 <br />
@@ -78,42 +99,59 @@ switches = parse_from_config_file(config_files, save_to_excel=False)
 ```
 <br />
 
+### 3. Using RESTCONF to obtain data
+
+```python
+from master_functions import parse_from_restconf
+
+hosts = ['10.0.0.1', '10.0.0.2']
+
+switches = parse_from_restconf(hosts, save_to_excel=False)
+```
 
 ## Using Switch & Interface Objects
 
-Once a list of switch objects have been instantiated and the running configuration parsed, you can use the switch objects to evaluate object attributes for auditing purposes. Two examples have been provided below.
+Once a list of switch objects have been instantiated and the configuration parsed, you can use the switch (and attached interface objects) to evaluate object attributes for auditing purposes. Two examples have been provided below.
 
 I have personally used this tool to audit a network that was comprised of roughly 25,000 access ports. Evaluating network configuration in an automated and programmatic way is very scalable, less prone to human-error, and can be executed on demand if configured as a service on a schedule or callable by some type of API. Essentially, your ability to be creative is your limitation.
 
 The information obtained with this tool can be used in a variety of ways. A couple of examples are to write the information to a database, an excel file or send notifications. 
 
+As a final note, there isn't parity in the model/object attributes obtained via the various methods/parsers (i.e. SSH, restconf). What is available for each method is tracked in the table below. Support may eventually be added in the future to add more attributes or achieve greater parity
+
 <br />
 
 ### Switch Objects Attributes
 
-Attribute | Type | Description | Example
-:--- | :---: | --- | --- | 
-running_config | str | Switch's running-config | N/A
-hostname | str | The Switch's hostname | MY_SWITCH
-vlans | list | A list of named tuples that contains <br> the VLAN name and VLAN ID | [vlan(id='300', name='Test_VLAN_300'), <br> vlan(id='400', name='Test_VLAN_400')
-interfaces | list | A list of interface objects | N/A
-ip_address (optional) | str | Switch's management IP | 10.0.0.1
+Attribute | Type | Description | Example | SSH Support | Config File Support | RESTCONF Support
+| :--- | :---: | --- | --- | :---: | :---: | :---: | 
+config | str | Switch's running-config | N/A | :heavy_check_mark: | :heavy_check_mark: | :x: |
+config_filename | str | Switch's config file name | myswitch.conf | :x: | :heavy_check_mark: | :x: |
+config_restconf | dict | Switch's running-config as JSON | N/A | :x: | :x: | :heavy_check_mark: |
+hostname | str | The Switch's hostname | MY_SWITCH | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+interfaces | list | A list of interface objects | N/A | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+ip_address (optional) | str | Switch's management IP | 10.0.0.1 | :heavy_check_mark: | :x: | :heavy_check_mark: |
+vlans | list | A list of named tuples that contains <br> the VLAN name and VLAN ID | [vlan(id=300, name='Test_VLAN_300'), <br> vlan(id=400, name='Test_VLAN_400') | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 
 ### Interface Object Attributes:
 
-Attribute | Type | Description | Example
-:--- | :---: | --- | --- | 
-running_config | str | Interface specific running config | Interface GigabitEthernet2/0/1 <br> description L04.01.J25  Nurse Call <br> switchport access vlan 10 <br> switchport mode access 
-switch_name | str | The Switch's hostname| MY_SWITCH 
-switch_vlans | list | A list of named tuples that contains <br> the VLAN name and VLAN ID | [vlan(id='300', name='Test_VLAN_300'), <br> vlan(id='400', name='Test_VLAN_400')]
-name | str | The interface's name | GigabitEthernet2/0/1
-type | str | Interface media type | GigabitEthernet 
-description | str | Interface's description | Test Description 
-is_access_port | bool | Returns True if access Port | True OR False
-vlan | str | VLAN ID of the interface | 345 
-vlan_name | str | VLAN name of the interface | TEST_VLAN 
-admin_down | bool | Returns True if admin shutdown | True OR False 
-ise_compliant | bool | Matches a subset of commands <br> see the method for more details | True OR False 
+Attribute | Type | Description | Example | SSH Support | Config File Support | RESTCONF Support
+| :--- | :---: | --- | --- | :---: | :---: | :---: | 
+admin_down | bool | Returns True if admin shutdown | True OR False  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+config | str | Interface specific running config | ...<br> description Test Description <br> switchport access vlan 10 <br> switchport mode access <br> switchport port-security <br> ... | :heavy_check_mark: | :heavy_check_mark: | :x: |
+config_restconf | dict | Interface's running-config as JSON | N/A | :x: | :x: | :heavy_check_mark: |
+description | str | Interface's description | Test Description  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+is_access_port | bool | Returns True if access Port | True OR False | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+is_trunk_port | bool | Returns True if trunk Port | True OR False | :x: | :x: | :heavy_check_mark: |
+ise_compliant | bool | Matches a subset of commands <br> see the method for more details | True OR False  | :heavy_check_mark: | :heavy_check_mark: | :x: |
+name | str | The interface's name | GigabitEthernet2/0/1 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+switch_hostname | str | The Switch's hostname| MY_SWITCH  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+switch_vlans | list | A list of named tuples that contains <br> the VLAN name and VLAN ID | [vlan(id=300, name='Test_VLAN_300'), <br> vlan(id=400, name='Test_VLAN_400')] | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+type | str | Interface media type | GigabitEthernet  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+vlan | int | VLAN ID of the interface | 345  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+vlan_name | str | VLAN name of the interface | TEST_VLAN  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+
+
 
 
 ### Find switchports that are access ports without NAC (network access control) configuration
@@ -131,7 +169,7 @@ for switch in switches:
 ```python
 for switch in switches:
     for interface in switch.interfaces:
-        if not interface.description and interface.is_access_port == True and interface.vlan == '350':
+        if not interface.description and interface.is_access_port == True and interface.vlan == 350:
              # Write to database
              # Write to excel file
              # Send notification to network team
@@ -142,7 +180,7 @@ for switch in switches:
 ```python
 for switch in switches:
     for vlan in switch.vlans:
-        if vlan.id == "948":
+        if vlan.id == 948:
              # Write to database
              # Write to excel file
              # Send notification to network team
@@ -155,12 +193,12 @@ I've added in functionality to the main functions mentioned at the beginning of 
 
 # Modifying the project for your specific usage
 
-This section describes how you can modify the Interface specific parser to obtain specific interface configuration information
+I've endeavoured to write this project in a way where adding new configuration checks can be done easily for myself in the future. I've documented the process so when I come back in 6 months I won't forget. Hopefully others can benefit from this as well! :) After following the instructions below you can use your new object attribute in the same manner described in the [usage](#usage) section of this document. As this project is focused on interface configuration/details, I have only included instructions on how to modify interface-related details. Below are instructions to modify both the regex (SSH & file-based textual conf) and RESTCONF parsers.
+
+As a further note, I am using the [pydantic](https://github.com/samuelcolvin/pydantic) project that allows you to define what the type value is for the attributes you are adding. This also enforces that no extra attributes are added or no attributes can be updated with incorrect type definitions. See the `Interface` class in `/models/interface.py` for examples. Keep this in mind when creating new object attributes referenced in the instructions below.
 
 
-## Modifying to obtain new interface configuration details
-
-I've endeavoured to write this project in a way where adding new configuration checks can be done easily for myself in the future. I've documented the process so when I come back in 6 months I won't forget, haha. Hopefully others can benefit from this as well! :) After following the instructions below you can use your new object attribute in the same manner described in the [usage](#usage) section of this document.
+## Modifying to obtain new interface configuration details - regex/text based output
 
 -----
 ### Interface configuration value check
@@ -168,13 +206,13 @@ I've endeavoured to write this project in a way where adding new configuration c
 
 Extract a specific value from a line of configuration. In example, say we wanted to obtain `300` from `switchport access vlan 300`.
 
-* Step 1: In `/parsers/parser_running_config_interface.py`, create a new method that uses the method `_obtain_config_data_from_regex_group` method. See the method `_determine_vlan` for an example.
+* Step 1: In `/parsers/parser_config_interface_regex.py`, create a new method that uses the method `_obtain_config_data_from_regex_group` method. See the method `_determine_vlan` for an example.
 
 * Step 2: `_obtain_config_data_from_regex_group` requires a couple of args. One is a regex with a group match (i.e. `^\s*switchport\saccess\svlan\s+(\d+)$`). The other is a `no_match_value` which is a value to set VLAN to if nothing is found in the configuration while parsing. It could be a bool or a string of `N/A` - whatever your preference.
 
-* Step 3: Create a new class attribute in `models/interface.py` (i.e. `self.vlan = None`). See the file for examples.
+* Step 3: Create a new class attribute in `models/interface.py` (i.e. `vlan: Optional[int]`). See the file for examples.
 
-* Step 4: Add your method (created in Step 1) to `_parse_running_config_for_data` in  `/parsers/parser_running_config_interface.py`. There will be some examples there for your reference.
+* Step 4: Add your method (created in Step 1) to `_parse_config_for_data` in  `/parsers/parser_config_interface_regex.py`. There will be some examples there for your reference.
 
 * Step 5 (Optional): Update the `README.md` file with your new attribute information in the table documenting the various object attributes
 <br />
@@ -186,13 +224,13 @@ Extract a specific value from a line of configuration. In example, say we wanted
 
 Checks if a line of configuration is present in the interface specific running-config. An example of this is if the interface is administraively shutdown. Will return `True` if there is a match and `False` if there is no match...
 
-* Step 1: In `/parsers/parser_running_config_interface.py`, create a new method that uses the method `_check_if_config_line_present` method. See the method `_determine_if_admin_down` for an example.
+* Step 1: In `/parsers/parser_config_interface_regex.py`, create a new method that uses the method `_check_if_config_line_present` method. See the method `_determine_if_admin_down` for an example.
 
 * Step 2: `_check_if_config_line_present` requires one arg - a regex with no group. In this example, to find an administratively shtudown interface, `^\s+shutdown$` was used
 
-* Step 3: Create a new class attribute in `models/interface.py` (i.e. `self.admin_down = None`). See the file for examples.
+* Step 3: Create a new class attribute in `models/interface.py` (i.e. `admin_down: Optional[bool]`). See the file for examples.
 
-* Step 4: Add your method (created in Step 1) to `_parse_running_config_for_data` in  `/parsers/parser_running_config_interface.py`. There will be some examples there for your reference.
+* Step 4: Add your method (created in Step 1) to `_parse_config_for_data` in  `/parsers/parser_config_interface_regex.py`. There will be some examples there for your reference.
 
 * Step 5 (Optional): Update the `README.md` file with your new attribute information in the table documenting the various object attributes
 <br />
@@ -206,16 +244,22 @@ Similar to [here](#check-if-configuration-linecommand-is-present-in-interface-co
 
 Example, if you wanted to see if a switchport had ALL the AAA/ISE configuration commands present in it for switchport security compliance, this functionality would check this. If all the ISE/AAA switchport commands are present in the interface specific running configuration, the result of `True` will be returned but if ANY are missing a result of `False` will be returned
 
-* Step 1: In `/parsers/parser_running_config_interface.py`, create a new method that uses the method `_check_config_subset` method. See the method `_ise_compliance_check` for an example.
+* Step 1: In `/parsers/parser_config_interface_regex.py`, create a new method that uses the method `_check_config_subset` method. See the method `_ise_compliance_check` for an example.
 
-* Step 2: `_check_config_subset` requires one arg, which is a list of commands. Review `_ise_compliance_check` in `/parsers/parser_running_config_interface.py` for an example of a configuration/command subset to provide `_check_config_subset`
+* Step 2: `_check_config_subset` requires one arg, which is a list of commands. Review `_ise_compliance_check` in `/parsers/parser_config_interface_regex.py` for an example of a configuration/command subset to provide `_check_config_subset`
 
-* Step 3: Create a new class attribute in `models/interface.py` (i.e. `self.is_ise_compliant = None`). See the file for examples.
+* Step 3: Create a new class attribute in `models/interface.py` (i.e. `ise_compliant: Optional[bool]`). See the file for examples.
 
-* Step 4: Add your method (created in Step 1) to `_parse_running_config_for_data` in  `/parsers/parser_running_config_interface.py`. There will be some examples there for your reference.
+* Step 4: Add your method (created in Step 1) to `_parse_config_for_data` in  `/parsers/parser_config_interface_regex.py`. There will be some examples there for your reference.
 
 * Step 5 (Optional): Update the `README.md` file with your new attribute information in the table documenting the various object attributes
 
+## Modifying to obtain new interface configuration details - RESTCONF
+
+* Step 1: In `parsers/parser_config_interface_restconf.py`, create a new method that searches and parses the JSON data from one of the YANG models queried. See the existing methods in the file for examples
+* Step 2: Add your new method to the `_parse_interface_restconf_data` method. Your method (created in step 1) should return the value you want to assign to an attribute of the interface object/model.
+* Step 3: Create a new class attribute in `models/interface.py` (i.e. `admin_down: Optional[bool]`). See the file for examples.
+* Step 4 (Optional): Update the `README.md` file with your new attribute information in the table documenting the various object attributes
 
 # SSH considerations
 * The only SSH command entered is `show running-configuration` to obtain the running-config to be parsed

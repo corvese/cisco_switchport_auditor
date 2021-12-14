@@ -1,3 +1,4 @@
 ciscoconfparse>=1.5.46
 netmiko>=3.4.0
 xlsxwriter>=3.0.2
+requests>=2.25.1

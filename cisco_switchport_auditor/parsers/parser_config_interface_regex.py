@@ -1,56 +1,47 @@
 from ciscoconfparse import CiscoConfParse
 
-
 class ParserRunningConfigInterface:
-    def __init__(self, Interface, interface_running_config, switch_name=None, switch_vlans=None):
-        """This class will parse interface specific configuration to obtain 
+    def __init__(self, Interface, interface_config):
+        """This class will parse interface specific configuration to obtain
         configuration details such as VLAN, interface name, description, etc.
         Those details are then added to the Interface object as attributes
 
         Args:
-            Interface (class): Interface object
-            interface_running_config (str): interface specific running-configuration
-            switch_name (str, optional): Switch hostname. Defaults to None.
-            switch_vlans (list, optional): List of named tuples where tuple contains 
-                                           VLAN id and VLAN name. Defaults to None.
+            Interface (obj): Interface object
+            interface_config (str): interface specific configuration
         """
         self._interface = Interface
 
-        self._interface_running_config = interface_running_config
-        self._add_running_config_to_interface_object()
-        self._running_config_split = self._format_running_config_for_CiscoConfParse()
+        self._interface_config = interface_config
+        self._add_config_to_interface_object()
 
-        if switch_name:
-            self._interface.switch_name = switch_name
-
-        self._switch_vlans = switch_vlans
-        self._interface.switch_vlans = switch_vlans
-
-        self._parser = self._add_interface_running_config_to_parser()
+        self._config_split = self._format_config_for_CiscoConfParse()
+        self._parser = self._add_interface_config_to_parser()
         self._interface_config_lines = self._obtain_interface_specific_line_config_objects()
-        self._parse_running_config_for_data()
+        
+        self._parse_config_for_data()
 
 
 
-    def _format_running_config_for_CiscoConfParse(self):
-        """CiscoConfParse requires input into the parser as a list 
-        rather than a string. This method splits the running 
+    def _format_config_for_CiscoConfParse(self):
+        """CiscoConfParse requires input into the parser as a list
+        rather than a string. This method splits the running
         configuration into a list. One entry per line
 
         Returns:
             list: interface configuration as a list. one line per entry
         """
-        return self._interface_running_config.splitlines()
+        return self._interface_config.splitlines()
 
-    def _add_interface_running_config_to_parser(self):
+    def _add_interface_config_to_parser(self):
         """Initializes the CiscoConfParse parse object to parse
         the interface specific running-config to obtain config
         parameters/details to update the interface object with
 
         Returns:
             object: CiscoConfParse parse object
-        """        
-        return CiscoConfParse(self._running_config_split, syntax='ios')
+        """
+        return CiscoConfParse(self._config_split, syntax='ios')
 
     def _obtain_interface_specific_line_config_objects(self):
         """Uses CiscoConfParse to generate cfgline objects to
@@ -59,21 +50,21 @@ class ParserRunningConfigInterface:
 
         Returns:
             list: list of CiscoConfParse IOSCfgLine Objects
-        """        
+        """
         return self._parser.find_objects(r'^interface.*$')[0]
 
-    def _add_running_config_to_interface_object(self):
+    def _add_config_to_interface_object(self):
         """Updates the interface object with an object attribute
         equal to the running-config as a string for use if ever
         required
         """        
-        self._interface.running_config = self._interface_running_config
+        self._interface.config = self._interface_config
     
 
-    def _parse_running_config_for_data(self):
+    def _parse_config_for_data(self):
         """Function that consolidates obtaining all the various
         interface configuration details
-        """        
+        """
         self._interface.name = self._determine_name()
         self._interface.type = self._determine_type()
         self._interface.description = self._determine_description()
@@ -113,7 +104,7 @@ class ParserRunningConfigInterface:
         Note: Sometimes switchport mode access is not present despite a VLAN
         being configured. The extra conditional check accounts for this scenario
 
-        Note: Ensure this method is AFTER _determine_vlan in _parse_running_config_for_data
+        Note: Ensure this method is AFTER _determine_vlan in _parse_config_for_data
 
         Returns:
             bool: Returns true if is an access port, else False
@@ -181,12 +172,15 @@ class ParserRunningConfigInterface:
         Returns:
             str: VLAN name (e.g. DATA_VLAN)
         """
-        if self._interface.vlan != None and self._switch_vlans != None:
-            for switch_vlan in self._switch_vlans:
-                if switch_vlan.id == self._interface.vlan:
-                    return switch_vlan.name
+        if self._interface.switch_vlans is not None:
+            for vlan in self._interface.switch_vlans:
+                if vlan.id == self._interface.vlan:
+                    return vlan.name
+                else:
+                    continue
+        else:
+            return None
 
-                    
 
     def _check_config_subset(self, subset_of_commands):
         """Input is a subset of configuration commands with 1 line per entry in a list. 
@@ -201,9 +195,9 @@ class ParserRunningConfigInterface:
 
         Returns:
             bool: Returns true if all commands found in an interface's configuration, else False
-        """        
+        """
         
-        return all(item in self._running_config_split for item in subset_of_commands)
+        return all(item in self._config_split for item in subset_of_commands)
 
     def _ise_compliance_check(self):
         '''

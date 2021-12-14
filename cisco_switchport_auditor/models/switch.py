@@ -1,15 +1,17 @@
-class Switch:
-    def __init__(self, running_config=None, ip_address=None, config_filename=None):
-        """Switch object to correlate configuration information to object attributes
+from typing import Optional, List
+from pydantic import BaseModel
 
-        Args:
-            running_config (str, optional): A switch's running/startup config. Defaults to None.
-            ip_address (stri, optional): Switch's management IP address. Defaults to None.
-        """
-        
-        self.running_config = running_config
-        self.ip_address = ip_address
-        self.config_filename = config_filename
-        self.hostname = None
-        self.vlans = []
-        self.interfaces = []
+class Switch(BaseModel):
+
+    """Switch object to correlate configuration information to object attributes"""
+
+    config: Optional[str]
+    config_filename: Optional[str]
+    config_restconf: Optional[dict]
+    hostname: Optional[str]
+    interfaces: Optional[List]
+    ip_address: Optional[str]
+    vlans: Optional[List]
+
+    class Config:
+        validate_assignment = True
