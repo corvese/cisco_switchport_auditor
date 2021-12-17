@@ -70,8 +70,10 @@ class ParserRunningConfigInterface:
         self._interface.description = self._determine_description()
         self._interface.admin_down = self._determine_if_admin_down()
         self._interface.vlan = self._determine_vlan()
+        self._interface.voice_vlan = self._determine_voice_vlan()
         self._interface.is_access_port = self._determine_is_access_port()
         self._interface.vlan_name = self._correlate_vlan_id_to_name()
+        self._interface.voice_vlan_name = self._correlate_voice_vlan_id_to_name()
         self._interface.ise_compliant = self._ise_compliance_check()
 
 
@@ -163,11 +165,18 @@ class ParserRunningConfigInterface:
         """
         return self._obtain_config_data_from_regex_group('^\s*switchport\saccess\svlan\s+(\d+)$', None)
 
+    def _determine_voice_vlan(self):
+        """Uses CiscoConfParse to ascertain an interface's voice VLAN id
+
+        Returns:
+            str: VLAN ID (e.g. 349)
+        """
+        return self._obtain_config_data_from_regex_group('^\s*switchport\svoice\svlan\s+(\d+)$', None)
 
     def _correlate_vlan_id_to_name(self):
-        """Tries to correlate VLAN ids to VLAN names per interface.
-        Will only execute if `switch_vlans` was provided when the object
-        was initialied and the interface is configured with a VLAN ID
+        """Tries to correlate a VLAN id to a VLAN name. Will only execute if
+        interface.switch_vlans is not None and the interface is configured
+        with a VLAN ID (set in `self._determine_vlan`)
 
         Returns:
             str: VLAN name (e.g. DATA_VLAN)
@@ -175,6 +184,23 @@ class ParserRunningConfigInterface:
         if self._interface.switch_vlans is not None:
             for vlan in self._interface.switch_vlans:
                 if vlan.id == self._interface.vlan:
+                    return vlan.name
+                else:
+                    continue
+        else:
+            return None
+
+    def _correlate_voice_vlan_id_to_name(self):
+        """Tries to correlate a VLAN id to a VLAN name. Will only execute if
+        interface.switch_vlans is not None and the interface is configured
+        with a voice VLAN ID (set in `self._determine_voice_vlan`)
+
+        Returns:
+            str: voice VLAN name (e.g. VOICE_VLAN)
+        """
+        if self._interface.switch_vlans is not None:
+            for vlan in self._interface.switch_vlans:
+                if vlan.id == self._interface.voice_vlan:
                     return vlan.name
                 else:
                     continue

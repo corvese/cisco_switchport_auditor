@@ -18,6 +18,8 @@ class Interface(BaseModel):
     type: Optional[str]
     vlan: Optional[int]
     vlan_name: Optional[str]
+    voice_vlan: Optional[int]
+    voice_vlan_name: Optional[str]
 
     class Config:
         validate_assignment = True

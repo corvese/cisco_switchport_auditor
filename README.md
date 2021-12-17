@@ -150,6 +150,8 @@ switch_vlans | list | A list of named tuples that contains <br> the VLAN name an
 type | str | Interface media type | GigabitEthernet  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 vlan | int | VLAN ID of the interface | 345  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 vlan_name | str | VLAN name of the interface | TEST_VLAN  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+voice_vlan | int | Voice VLAN ID | 250  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+voice_vlan_name | str | Voice VLAN name | TEST_VOICE_VLAN  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 
 
 
