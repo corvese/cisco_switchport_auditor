@@ -141,6 +141,7 @@ admin_down | bool | Returns True if admin shutdown | True OR False  | :heavy_che
 config | str | Interface specific running config | ...<br> description Test Description <br> switchport access vlan 10 <br> switchport mode access <br> switchport port-security <br> ... | :heavy_check_mark: | :heavy_check_mark: | :x: |
 config_restconf | dict | Interface's running-config as JSON | N/A | :x: | :x: | :heavy_check_mark: |
 description | str | Interface's description | Test Description  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+IPDT_policy | str | Assigned IPDT policy | IPDT_MAX_10  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 is_access_port | bool | Returns True if access Port | True OR False | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 is_trunk_port | bool | Returns True if trunk Port | True OR False | :x: | :x: | :heavy_check_mark: |
 ise_compliant | bool | Matches a subset of commands <br> see the method for more details | True OR False  | :heavy_check_mark: | :heavy_check_mark: | :x: |

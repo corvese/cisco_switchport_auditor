@@ -75,6 +75,7 @@ class ParserRunningConfigInterface:
         self._interface.vlan_name = self._correlate_vlan_id_to_name()
         self._interface.voice_vlan_name = self._correlate_voice_vlan_id_to_name()
         self._interface.ise_compliant = self._ise_compliance_check()
+        self._interface.IPDT_policy = self._determine_IPDT_policy()
 
 
 
@@ -90,7 +91,7 @@ class ParserRunningConfigInterface:
 
     def _obtain_config_data_from_regex_group(self, regex, no_match_value=None):
         """Returns regex group 1 value. If there is no match, the value specified
-        in no_match_value is returned
+        in no_match_value is returned (defaults to None)
 
         Args:
             regex (str): Regex of the string you want to match
@@ -172,6 +173,15 @@ class ParserRunningConfigInterface:
             str: VLAN ID (e.g. 349)
         """
         return self._obtain_config_data_from_regex_group('^\s*switchport\svoice\svlan\s+(\d+)$', None)
+
+    def _determine_IPDT_policy(self):
+        """Uses CiscConfParse to ascertain an interface's IPDT policy
+
+        Returns:
+            str: Interface's IPDT policy name
+        """
+        return self._obtain_config_data_from_regex_group('^\s*device-tracking\sattach-policy\s(.*)$')
+
 
     def _correlate_vlan_id_to_name(self):
         """Tries to correlate a VLAN id to a VLAN name. Will only execute if

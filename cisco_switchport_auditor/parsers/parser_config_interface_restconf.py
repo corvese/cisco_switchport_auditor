@@ -28,6 +28,7 @@ class ParserConfigInterfaceRestconf:
         self._interface.voice_vlan = self._determine_voice_vlan()
         self._interface.is_access_port = self._determine_is_access_port()
         self._interface.is_trunk_port = self._determine_is_trunk_port()
+        self._interface.IPDT_policy = self._determine_IPDT_policy()
         self._interface.vlan_name = self._correlate_vlan_id_to_name()
         self._interface.voice_vlan_name = self._correlate_voice_vlan_id_to_name()
 
@@ -128,6 +129,18 @@ class ParserConfigInterfaceRestconf:
         except KeyError:
             return False
 
+    def _determine_IPDT_policy(self):
+        """Obtains the interface IPDT policy name from the interface
+        specific restconf configuration
+        
+        Returns:
+            str: Interface's IPDT policy name
+        """
+        try:
+            return self._interface_config_restconf['Cisco-IOS-XE-switch:device-tracking']['attach-policy']
+        
+        except KeyError:
+            return None
 
     def _correlate_vlan_id_to_name(self):
         """Tries to correlate a VLAN id to a VLAN name. Will only execute if

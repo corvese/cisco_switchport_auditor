@@ -9,6 +9,7 @@ class Interface(BaseModel):
     config: Optional[str]
     config_restconf: Optional[dict]
     description: Optional[str]
+    IPDT_policy: Optional[str]
     is_access_port: Optional[bool]
     is_trunk_port: Optional[bool]
     ise_compliant: Optional[bool]
