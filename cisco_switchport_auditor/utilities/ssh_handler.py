@@ -2,8 +2,7 @@ import datetime
 import os
 import socket
 
-from netmiko import ConnectHandler, NetmikoTimeoutException
-from netmiko.ssh_exception import NetmikoAuthenticationException
+from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticationException
 
 class ssh_handler:
     def __init__(self, host, username, password, secret=None, device_type='cisco_ios', port=22):
